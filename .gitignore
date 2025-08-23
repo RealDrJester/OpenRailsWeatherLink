@@ -23,9 +23,13 @@ __pycache__/
 build/
 dist/
 *.spec
+\#RELEASES/
+\#OLD/
+\#sources/
 
 # --- Project-Specific Excluded Folders ---
 # These are folders from your project that you do not want to track.
+
 #sources/
 #OLD/
 themes/
@@ -33,6 +37,7 @@ user_sounds/MaybeWorks/
 user_sounds/OG/
 user_sounds/ORTS/
 user_sounds/Working/
+
 
 # --- Project-Specific Excluded Files ---
 # Individual files you do not want to track.
