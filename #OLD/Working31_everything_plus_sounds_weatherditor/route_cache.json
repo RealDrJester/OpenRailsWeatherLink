@@ -1,0 +1,39 @@
+{
+  "G:/##OPENRAILS##/#OpenRails Mods/#ITALY": {
+    "TL-Ferrovie Pianura Padana vers.2.0": {
+      "id": "FPP",
+      "path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\FPP",
+      "trk_path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\FPP\\FPP.trk"
+    },
+    "Ferrovia del Frejus": {
+      "id": "frejus",
+      "path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\Frejus",
+      "trk_path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\Frejus\\frejus.trk"
+    },
+    "Battipaglia - Paola": {
+      "id": "ITALIA10",
+      "path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\ITALIA10",
+      "trk_path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\ITALIA10\\ITALIA10.trk"
+    },
+    "Firenze - Bologna - Milano": {
+      "id": "ITALIA13",
+      "path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\ITALIA13",
+      "trk_path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\ITALIA13\\ITALIA13.trk"
+    },
+    "Napoli - Reggio Calabria": {
+      "id": "ITALIA22",
+      "path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\ITALIA22",
+      "trk_path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\ITALIA22\\Napoli.trk"
+    },
+    "TL-Tirrenica Meridionale vers.2.0": {
+      "id": "SUD-ITALIA_01",
+      "path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\SUD-ITALIA_01",
+      "trk_path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\SUD-ITALIA_01\\SUD-ITALIA_01.trk"
+    },
+    "Torino - Milano": {
+      "id": "TO-MI",
+      "path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\To-Mi",
+      "trk_path": "G:\\##OPENRAILS##\\#OpenRails Mods\\#ITALY\\ROUTES\\To-Mi\\TO-MI.trk"
+    }
+  }
+}

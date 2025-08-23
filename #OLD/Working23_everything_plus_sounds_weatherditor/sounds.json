@@ -1,0 +1,86 @@
+[
+    {
+        "category": "thunder",
+        "pattern": "ThunderSound*.wav",
+        "sound_type": "Everywhere",
+        "condition": "thunderstorm",
+        "looping": false
+    },
+    {
+        "category": "wind",
+        "pattern": "wind*.wav",
+        "sound_type": "Everywhere",
+        "condition": "windy",
+        "looping": true
+    },
+    {
+        "category": "blizzard",
+        "pattern": "PolarWind*.wav",
+        "sound_type": "Everywhere",
+        "condition": "blizzard",
+        "looping": true
+    },
+    {
+        "category": "everywhere_light_rain",
+        "pattern": "LightRain*.wav",
+        "sound_type": "Everywhere",
+        "condition": "light_rain",
+        "looping": true
+    },
+    {
+        "category": "everywhere_medium_rain",
+        "pattern": "MediumRain*.wav",
+        "sound_type": "Everywhere",
+        "condition": "medium_rain",
+        "looping": true
+    },
+    {
+        "category": "everywhere_heavy_rain",
+        "pattern": "HeavyRain*.wav",
+        "sound_type": "Everywhere",
+        "condition": "heavy_rain",
+        "looping": true
+    },
+    {
+        "category": "cab_light_rain",
+        "pattern": "CabLightRain*.wav",
+        "sound_type": "Cab",
+        "condition": "light_rain",
+        "looping": true
+    },
+    {
+        "category": "cab_medium_rain",
+        "pattern": "CabMediumRain*.wav",
+        "sound_type": "Cab",
+        "condition": "medium_rain",
+        "looping": true
+    },
+    {
+        "category": "cab_heavy_rain",
+        "pattern": "CabHeavyRain*.wav",
+        "sound_type": "Cab",
+        "condition": "heavy_rain",
+        "looping": true
+    },
+    {
+        "category": "pass_light_rain",
+        "pattern": "PassLightRain*.wav",
+        "sound_type": "Pass",
+        "condition": "light_rain",
+        "looping": true
+    },
+    {
+        "category": "pass_medium_rain",
+        "pattern": "PassMediumRain*.wav",
+        "sound_type": "Pass",
+        "condition": "medium_rain",
+        "looping": true
+    },
+    {
+        "category": "pass_heavy_rain",
+        "pattern": "PassHeavyRain*.wav",
+        "sound_type": "Pass",
+        "condition": "heavy_rain",
+        "looping": true
+    }
+]

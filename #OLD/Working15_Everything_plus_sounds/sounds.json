@@ -1,0 +1,56 @@
+[
+    {
+        "category": "thunder",
+        "pattern": "Thundersound*.wav",
+        "sound_type": "Everywhere",
+        "condition": "thunderstorm"
+    },
+    {
+        "category": "wind",
+        "pattern": "wind*.wav",
+        "sound_type": "Everywhere",
+        "condition": "windy"
+    },
+    {
+        "category": "blizzard",
+        "pattern": "PolarWind*.wav",
+        "sound_type": "Everywhere",
+        "condition": "blizzard"
+    },
+    {
+        "category": "cab_light_rain",
+        "pattern": "CabLightRain*.wav",
+        "sound_type": "Cab",
+        "condition": "light_rain"
+    },
+    {
+        "category": "cab_medium_rain",
+        "pattern": "CabMediumRain*.wav",
+        "sound_type": "Cab",
+        "condition": "medium_rain"
+    },
+    {
+        "category": "cab_heavy_rain",
+        "pattern": "CabHeavyRain*.wav",
+        "sound_type": "Cab",
+        "condition": "heavy_rain"
+    },
+    {
+        "category": "pass_light_rain",
+        "pattern": "PassLightRain*.wav",
+        "sound_type": "Pass",
+        "condition": "light_rain"
+    },
+    {
+        "category": "pass_medium_rain",
+        "pattern": "PassMediumRain*.wav",
+        "sound_type": "Pass",
+        "condition": "medium_rain"
+    },
+    {
+        "category": "pass_heavy_rain",
+        "pattern": "PassHeavyRain*.wav",
+        "sound_type": "Pass",
+        "condition": "heavy_rain"
+    }
+]

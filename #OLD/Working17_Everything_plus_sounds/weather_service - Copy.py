@@ -1,0 +1,180 @@
+# 🚫 AI INSTRUCTIONS: DO NOT MODIFY UNLESS EXPLICITLY REQUESTED
+# This section is protected. You may only:
+# - Fix bugs that are clearly identified
+# - Implement specific changes as described by the user
+# ❌ Do NOT refactor, rename, delete, or restructure anything here
+# ❌ Do NOT change logic, functionality, or formatting unless asked
+# If unsure, ASK the user before making changes.
+
+
+
+
+# weather_service.py
+import requests
+import random
+from datetime import datetime, timedelta
+import math
+
+class WeatherService:
+    def __init__(self):
+        self.WMO_CODES = {
+            0:"Clear", 1:"Mainly Clear", 2:"Partly Cloudy", 3:"Overcast", 45:"Fog", 48:"Rime Fog", 51:"Light Drizzle", 53:"Drizzle", 55:"Dense Drizzle",
+            61:"Rain", 63:"Mod. Rain", 65:"Heavy Rain", 71:"Snow", 73:"Mod. Snow", 75:"Heavy Snow", 80:"Showers", 81:"Mod. Showers", 82:"Violent Showers", 95:"Thunderstorm"
+        }
+    def get_weather_data(self, lat, lon, date_obj=None):
+        try:
+            params = { "latitude": lat, "longitude": lon, "hourly": "temperature_2m,precipitation,weathercode,cloudcover,windspeed_10m,winddirection_10m,visibility" }
+            if date_obj:
+                url = "https://archive-api.open-meteo.com/v1/archive"; date_str = date_obj.strftime("%Y-%m-%d"); next_day = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
+                params["start_date"] = date_str; params["end_date"] = next_day
+            else:
+                url = "https://api.open-meteo.com/v1/forecast"; params["forecast_days"] = 2
+            response = requests.get(url, params=params, timeout=15); response.raise_for_status(); return response.json()
+        except requests.exceptions.RequestException: return None
+    def create_weather_events_string(self, lat, lon, season, force_snow, date_obj=None, start_hour=0):
+        weather_data = self.get_weather_data(lat, lon, date_obj)
+        if not weather_data: return None, "Could not fetch weather data from API."
+        # --- IMPROVEMENT: Smooth Precipitation Liquidity ---
+        def map_weather(wmo, cloud, precip, vis, temp, current_season, snow_forced):
+            params = {"Overcast": 0.0, "Fog": 100000.0, "Precipitation": 0.0, "Liquidity": 1.0}
+            if cloud is not None: params["Overcast"] = round(cloud / 100.0, 2)
+            if precip is not None: params["Precipitation"] = round(min(precip, 15.0) / 1000.0, 5)
+            if vis is not None: params["Fog"] = max(10, vis)
+            
+            if current_season in [2, 3] and snow_forced:
+                params["Liquidity"] = 0.0
+            elif temp is not None:
+                if temp > 2: liquidity = 1.0  # Rain
+                elif temp < -1: liquidity = 0.0  # Snow
+                else: liquidity = (temp + 1) / 3.0 # Linear transition from -1C to 2C
+                params["Liquidity"] = round(max(0.0, min(1.0, liquidity)), 2)
+            else:
+                 params["Liquidity"] = 1.0
+
+            if wmo is not None and 45 <= wmo <= 48:
+                params["Fog"] = int(min(params["Fog"], 600)); params["Overcast"] = max(params["Overcast"], 0.8)
+            return params
+        events = []; hourly = weather_data.get("hourly", {})
+        try:
+            for i in range(48):
+                current_hour_idx = start_hour + (i // 2)
+                next_hour_idx = current_hour_idx + 1
+                is_half_hour = (i % 2 == 1)
+                def get_val(param):
+                    val_current = hourly.get(param, [0])[current_hour_idx] if hourly.get(param) and current_hour_idx < len(hourly[param]) and hourly[param][current_hour_idx] is not None else 0
+                    if not is_half_hour: return val_current
+                    val_next = hourly.get(param, [0])[next_hour_idx] if hourly.get(param) and next_hour_idx < len(hourly[param]) and hourly[param][next_hour_idx] is not None else val_current
+                    return (val_current + val_next) / 2.0
+                
+                wmo = hourly["weathercode"][current_hour_idx]
+                temp = get_val("temperature_2m")
+                p = map_weather(wmo, get_val("cloudcover"), get_val("precipitation"), get_val("visibility"), temp, season, force_snow)
+                event_time_seconds = i * 1800; transition_time = 60 if i == 0 else 1800
+                event_lines = [
+                    f"\t\tEventCategoryTime (", f"\t\t\tEventTypeTime ( )", f"\t\t\tID ( 900{i} )", f"\t\t\tActivation_Level ( 1 )",
+                    f"\t\t\tName ( WTHLINK_Interval_{i} )", f"\t\t\tTime ( {event_time_seconds} )", f"\t\t\tOutcomes (",
+                    f"\t\t\t\tORTSWeatherChange (", f"\t\t\t\t\tORTSOvercast ( {p['Overcast']:.2f} {transition_time} )",
+                    f"\t\t\t\t\tORTSFog ( {p['Fog']:.0f} {transition_time} )", f"\t\t\t\t\tORTSPrecipitationIntensity ( {p['Precipitation']:.5f} {transition_time} )",
+                    f"\t\t\t\t\tORTSPrecipitationLiquidity ( {p['Liquidity']:.1f} {transition_time} )", f"\t\t\t\t)", f"\t\t\t)", f"\t\t)"
+                ]
+                events.extend(event_lines)
+        except (IndexError, KeyError) as e: return None, f"Incomplete weather data received from API. Error: {e}"
+        return "\n".join(events), "Weather events generated successfully."
+
+    # --- NEW FEATURE: Custom Weather Presets ---
+    def create_preset_weather_events(self, preset_name):
+        presets = {
+            "Developing Thunderstorm": [
+                (0, {"Overcast": 0.2, "Fog": 50000, "Precipitation": 0.0}),
+                (0.5, {"Overcast": 0.6, "Fog": 20000, "Precipitation": 0.0}),
+                (1, {"Overcast": 0.9, "Fog": 8000, "Precipitation": 0.002, "Liquidity": 1.0}),
+                (1.5, {"Overcast": 1.0, "Fog": 3000, "Precipitation": 0.012, "Liquidity": 1.0}),
+                (3, {"Overcast": 0.5, "Fog": 25000, "Precipitation": 0.001, "Liquidity": 1.0}),
+                (4, {"Overcast": 0.3, "Fog": 50000, "Precipitation": 0.0, "Liquidity": 1.0}),
+            ],
+            "Gradual Clearing": [
+                (0, {"Overcast": 0.9, "Fog": 8000, "Precipitation": 0.001}),
+                (1, {"Overcast": 0.7, "Fog": 15000, "Precipitation": 0.0}),
+                (2, {"Overcast": 0.4, "Fog": 30000}),
+                (3, {"Overcast": 0.1, "Fog": 50000}),
+            ],
+            "Passing Snow Showers": [
+                (0, {"Overcast": 0.4, "Fog": 40000, "Precipitation": 0.0, "Liquidity": 0.0}),
+                (0.5, {"Overcast": 0.8, "Fog": 5000, "Precipitation": 0.005, "Liquidity": 0.0}),
+                (1.5, {"Overcast": 0.5, "Fog": 30000, "Precipitation": 0.0, "Liquidity": 0.0}),
+                (2.5, {"Overcast": 0.9, "Fog": 4000, "Precipitation": 0.008, "Liquidity": 0.0}),
+                (3.5, {"Overcast": 0.6, "Fog": 40000, "Precipitation": 0.0, "Liquidity": 0.0}),
+            ]
+        }
+        
+        keyframes = presets.get(preset_name)
+        if not keyframes: return None, f"Preset '{preset_name}' not found."
+
+        events = []
+        total_duration_hours = 24
+        num_intervals = 48
+
+        for i in range(num_intervals):
+            current_time_hours = (i / num_intervals) * total_duration_hours
+            
+            # Find surrounding keyframes
+            prev_kf = keyframes[0]
+            next_kf = keyframes[-1]
+            for kf in keyframes:
+                if kf[0] <= current_time_hours: prev_kf = kf
+            for kf in reversed(keyframes):
+                if kf[0] >= current_time_hours: next_kf = kf
+
+            # Interpolate values
+            p = {}
+            if prev_kf == next_kf:
+                p = prev_kf[1]
+            else:
+                fraction = (current_time_hours - prev_kf[0]) / (next_kf[0] - prev_kf[0])
+                for key in prev_kf[1]:
+                    start_val = prev_kf[1][key]
+                    end_val = next_kf[1].get(key, start_val)
+                    p[key] = start_val + (end_val - start_val) * fraction
+
+            # Set defaults for any missing params
+            p.setdefault("Overcast", 0.1)
+            p.setdefault("Fog", 50000)
+            p.setdefault("Precipitation", 0)
+            p.setdefault("Liquidity", 1.0)
+            p["Precipitation"] = min(p["Precipitation"], 0.015) # Adhere to cap
+
+            event_time_seconds = i * 1800
+            transition_time = 60 if i == 0 else 1800
+            event_lines = [
+                f"\t\tEventCategoryTime (", f"\t\t\tEventTypeTime ( )", f"\t\t\tID ( 900{i} )", f"\t\t\tActivation_Level ( 1 )",
+                f"\t\t\tName ( WTHLINK_Preset_{preset_name.replace(' ','')}_{i} )", f"\t\t\tTime ( {event_time_seconds} )", f"\t\t\tOutcomes (",
+                f"\t\t\t\tORTSWeatherChange (",
+                f"\t\t\t\t\tORTSOvercast ( {p['Overcast']:.2f} {transition_time} )",
+                f"\t\t\t\t\tORTSFog ( {p['Fog']:.0f} {transition_time} )",
+                f"\t\t\t\t\tORTSPrecipitationIntensity ( {p['Precipitation']:.5f} {transition_time} )",
+                f"\t\t\t\t\tORTSPrecipitationLiquidity ( {p['Liquidity']:.1f} {transition_time} )",
+                f"\t\t\t\t)", f"\t\t\t)", f"\t\t)"
+            ]
+            events.extend(event_lines)
+
+        return "\n".join(events), f"'{preset_name}' preset generated successfully."
+
+    def create_chaotic_weather_events(self):
+        events = []
+        weather_states = [
+            {"Overcast": 0.1, "Fog": 60000, "Precipitation": 0.0, "Liquidity": 1.0},
+            {"Overcast": 0.9, "Fog": 800, "Precipitation": 0.0, "Liquidity": 1.0},
+            {"Overcast": 0.8, "Fog": 5000, "Precipitation": 0.015, "Liquidity": 1.0},
+            {"Overcast": 0.9, "Fog": 2000, "Precipitation": 0.015, "Liquidity": 0.0}, # Changed 0.018 to 0.015
+        ]
+        for i in range(48):
+            p = random.choice(weather_states); event_time_seconds = i * 1800; transition_time = 300
+            event_lines = [
+                f"\t\tEventCategoryTime (", f"\t\t\tEventTypeTime ( )", f"\t\t\tID ( 900{i} )", f"\t\t\tActivation_Level ( 1 )",
+                f"\t\t\tName ( WTHLINK_Chaotic_{i} )", f"\t\t\tTime ( {event_time_seconds} )", f"\t\t\tOutcomes (",
+                f"\t\t\t\tORTSWeatherChange (", f"\t\t\t\t\tORTSOvercast ( {p['Overcast']:.2f} {transition_time} )",
+                f"\t\t\t\t\tORTSFog ( {p['Fog']:.0f} {transition_time} )", f"\t\t\t\t\tORTSPrecipitationIntensity ( {p['Precipitation']:.5f} {transition_time} )",
+                f"\t\t\t\t\tORTSPrecipitationLiquidity ( {p['Liquidity']:.1f} {transition_time} )", f"\t\t\t\t)", f"\t\t\t)", f"\t\t)"
+            ]
+            events.extend(event_lines)
+        return "\n".join(events), "Chaotic weather events generated successfully."

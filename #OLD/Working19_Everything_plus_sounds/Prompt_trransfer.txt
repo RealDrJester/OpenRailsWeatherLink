@@ -1,0 +1,120 @@
+Of course. This is an excellent refinement. Providing explicit, detailed instructions on the parsing and calculation logic is the key to ensuring the AI can replicate the program's core functionality precisely. The instruction to only generate changed files is also a crucial efficiency directive.
+
+Here is the amended prompt, incorporating all your new requirements.
+
+---
+
+### **Prompt for AI Code Generation (Amended)**
+
+**System Instruction: Generate Only Changed Files**
+
+Your primary goal is to amend the existing code based on the user's request. You **MUST** analyze the request and identify which of the existing files need to be modified. You **MUST ONLY** generate the full code for the files that have changed. For any file that is unchanged, you **MUST** explicitly state: `[Filename] is unchanged.`
+
+**System Instruction: Maintain Cross-File Consistency**
+
+When working on a project split across multiple Python files (e.g., a main application and several modules), your most critical task is to ensure that function and method calls remain valid after any code change. Before you output the final set of files, you **MUST** perform a consistency check, especially after refactoring:
+
+1.  **If you DELETE a function or method**, you **MUST** search all other files for any code that calls it and remove or update those calls.
+2.  **If you RENAME a function or method**, you **MUST** search all other files and update every call to use the new name.
+3.  **If you change the PARAMETERS** of a function, you **MUST** search all other files and update every call to match the new signature.
+
+The `AttributeError: 'ObjectName' object has no attribute 'function_name'` is the direct result of failing this check. This is a critical failure mode that must be avoided at all costs.
+
+---
+
+**High-Level Goal:**
+Create a complete, multi-file Python desktop application named "ORTS WeatherLink" that safely generates new, non-destructive copies of Open Rails activity files with real-world weather events injected.
+
+---
+
+### **Detailed File Parsing & Logic Instructions**
+
+This section provides explicit instructions for the logic within **`openrails_parser.py`**.
+
+**1. Reading Track Files (`.trk`):**
+*   **Method:** Parse this text file (often UTF-16 LE) using regular expressions.
+*   **Fields to Extract:**
+    *   `RouteID`: Use `re.search(r'RouteID\s*\(\s*([\w\s\-\.]+)\s*\)', ...)` to find the route's unique identifier.
+    *   `Name`: Use `re.search(r'Name\s*\(\s*"(.*?)"\s*\)', ...)` to get the human-readable route name for the UI.
+    *   `RouteStart`: This is the fallback for location data. Use `re.search(r'RouteStart\s*\(\s*(-?\d+)\s+(-?\d+)\s+(-?\d+\.?\d*)\s+(-?\d+\.?\d*)\s*\)', ...)` to extract `TileX`, `TileZ`, `OffsetX`, and `OffsetZ`.
+
+**2. Calculating Real-World Location (Goode Homolosine Projection):**
+*   **Core Logic:** For legacy routes without explicit coordinates, the location **must be calculated** from the `RouteStart` values using the Goode Homolosine projection.
+*   **Implementation:** You **MUST** use the following Python class, which is a direct port of the official Open Rails C# code, to perform this calculation. This is non-negotiable.
+
+    ```python
+    # Snippet to be included in openrails_parser.py
+    import math
+
+    class GoodeProjection:
+        def __init__(self):
+            self.earthRadius = 6370997; self.tileSize = 2048; self.ul_x = -20013965; self.ul_y = 8674008
+            self.wt_ew_offset = -16385; self.wt_ns_offset = 16385; self.Lon_Center = [0.0] * 12; self.F_East = [0.0] * 12; self.GoodeInit()
+        def GoodeInit(self):
+            self.Lon_Center[0] = -1.74532925199; self.Lon_Center[1] = -1.74532925199; self.Lon_Center[2] = 0.523598775598; self.Lon_Center[3] = 0.523598775598
+            self.Lon_Center[4] = -2.79252680319; self.Lon_Center[5] = -1.0471975512; self.Lon_Center[6] = -2.79252680319; self.Lon_Center[7] = -1.0471975512
+            self.Lon_Center[8] = 0.349065850399; self.Lon_Center[9] = 2.44346095279; self.Lon_Center[10] = 0.349065850399; self.Lon_Center[11] = 2.44346095279
+            for i in range(12): self.F_East[i] = self.earthRadius * self.Lon_Center[i]
+        def ConvertWTC(self, tile_x, tile_z, loc_x, loc_z):
+            Y = self.ul_y - ((self.wt_ns_offset - tile_z - 1) * self.tileSize) + loc_z
+            X = self.ul_x + ((tile_x - self.wt_ew_offset - 1) * self.tileSize) + loc_x
+            return self.Goode_Inverse(X, Y)
+        def Goode_Inverse(self, GX, GY):
+            region = 0; earthR = self.earthRadius
+            if GY >= earthR * 0.710987989993: region = 0 if GX <= earthR * -0.698131700798 else 2
+            elif GY >= 0: region = 1 if GX <= earthR * -0.698131700798 else 3
+            elif GY >= earthR * -0.710987989993:
+                if GX <= earthR * -1.74532925199: region = 4
+                elif GX <= earthR * -0.349065850399: region = 5
+                elif GX <= earthR * 1.3962634016: region = 8
+                else: region = 9
+            else:
+                if GX <= earthR * -1.74532925199: region = 6
+                elif GX <= earthR * -0.349065850399: region = 7
+                elif GX <= earthR * 1.3962634016: region = 10
+                else: region = 11
+            GX = GX - self.F_East[region]; lat, lon = 0.0, 0.0
+            if region in [1, 3, 4, 5, 8, 9]:
+                lat = GY / earthR; lon = self.Adjust_Lon(self.Lon_Center[region] + GX / (earthR * math.cos(lat))) if abs(abs(lat) - math.pi/2) > 1e-10 else self.Lon_Center[region]
+            else:
+                arg = (GY + 0.0528035274542 * earthR * (1 if GY >= 0 else -1)) / (1.4142135623731 * earthR)
+                if abs(arg) > 1: return None, None
+                theta = math.asin(arg); lon = self.Lon_Center[region] + (GX / (0.900316316158 * earthR * math.cos(theta))); arg = (2 * theta + math.sin(2 * theta)) / math.pi
+                if abs(arg) > 1: return None, None
+                lat = math.asin(arg)
+            return math.degrees(lat), math.degrees(lon)
+        def Adjust_Lon(self, val): return val - ((1 if val >= 0 else -1) * 2 * math.pi) if abs(val) > math.pi else val
+    ```
+
+**3. Reading Activity Files (`.act`):**
+*   **Method:** Parse this text file (often UTF-16 LE) using regular expressions.
+*   **Fields to Extract:**
+    *   `PathID`: Use `re.search(r'PathID\s*\(\s*(\w+)\s*\)', ...)` to identify the name of the `.pat` file.
+    *   `Season`: Use `re.search(r'Season\s*\(\s*(\d)\s*\)', ...)` to get the season code. Map these values: `0`=Spring, `1`=Summer, `2`=Autumn, `3`=Winter.
+    *   `Description` and `Briefing`: Extract their full string content for display in the UI.
+
+**4. Reading Path Files (`.pat`) for Map Display:**
+*   **Goal:** Generate a list of (latitude, longitude) coordinates for the map view.
+*   **Logic:** The parser must handle the modern format:
+    1.  Use `re.compile(r'TrackPDP\s*\(\s*(-?\d+)\s+(-?\d+)\s+([\d\.-]+)\s+([\d\.-]+)\s+([\d\.-]+)', ...)` to read all `TrackPDP` lines into a list of dictionaries, each containing `tile_x`, `tile_z`, `offset_x`, and `offset_z`.
+    2.  Use `re.compile(r'TrPathNode\s*\(\s*\w+\s+\w+\s+\w+\s+(\d+)\s*\)', ...)` to read all `TrPathNode` lines into a list of integer indices.
+    3.  Iterate through the list of indices. For each index, look up the corresponding dictionary in the `TrackPDP` list.
+    4.  Use the `GoodeProjection.ConvertWTC()` method to convert the `TrackPDP` data into lat/lon coordinates.
+    5.  Return the final list of coordinates.
+
+---
+
+### **Core Principles & File Structure (Unchanged)**
+
+*   **File Safety:** Absolutely no modification of original user files.
+*   **Correct Weather Injection:** Use self-contained `EventCategoryTime` blocks inside the `Events()` block.
+*   **File Encoding:** Read files by trying `UTF-16 LE BOM`, then `UTF-8-SIG`.
+*   **No Feature Regressions.**
+*   **File Structure (5 files):**
+    1.  `main_app.pyw`
+    2.  `config_manager.py`
+    3.  `ui_components.py`
+    4.  `weather_service.py`
+    5.  `openrails_parser.py`
+
+Please proceed with generating the amended files based on these explicit instructions.
