@@ -86,9 +86,16 @@ class OpenRailsParser:
             if "OpenRails" in trk_path.parts: continue
             content, _ = self._read_file(trk_path)
             if not content: continue
-            name_match = re.search(r'Name\s*\(\s*"(.*?)"\s*\)', content, re.IGNORECASE | re.DOTALL)
-            route_id_match = re.search(r'RouteID\s*\(\s*([\w\s\-\.]+)\s*\)', content, re.IGNORECASE | re.DOTALL)
-            if name_match and route_id_match: routes[name_match.group(1)] = {"id": route_id_match.group(1).strip(), "path": str(trk_path.parent), "trk_path": str(trk_path)}
+            # Regex to find Name(), supporting both "quoted" and unquoted values
+            name_match = re.search(r'Name\s*\(\s*(?:"([^"]+)"|([\w\s\-\.]+))\s*\)', content, re.IGNORECASE | re.DOTALL)
+            # Regex to find RouteID(), supporting both "quoted" and unquoted values
+            route_id_match = re.search(r'RouteID\s*\(\s*(?:"([^"]+)"|([\w\s\-\.]+))\s*\)', content, re.IGNORECASE | re.DOTALL)
+            
+            if name_match and route_id_match:
+                # The regex has two capture groups; one for quoted, one for unquoted. One will be None.
+                route_name = name_match.group(1) or name_match.group(2)
+                route_id = route_id_match.group(1) or route_id_match.group(2)
+                routes[route_name.strip()] = {"id": route_id.strip(), "path": str(trk_path.parent), "trk_path": str(trk_path)}
         return routes
     def route_has_generated_files(self, route_path_str):
         route_path = Path(route_path_str)
@@ -282,11 +289,4 @@ class OpenRailsParser:
                 overcast = get_val('ORTSOvercast') * 100
                 fog = get_val('ORTSFog')
                 precip = get_val('ORTSPrecipitationIntensity') * 1000
-                liquidity = get_val('ORTSPrecipitationLiquidity')
-                
-                trans_m = re.search(r'ORTSOvercast\s*\(\s*[\d\.-]+\s+(\d+)', weather_content, re.IGNORECASE)
-                transition = int(trans_m.group(1)) if trans_m else 30
-
-                events.append({'type': 'weather', 'time': time, 'overcast': overcast, 'fog': fog, 'precip': precip, 'liquidity': liquidity, 'transition': transition})
-        
-        return sorted(events, key=lambda x: x['time'])
+       
