@@ -228,9 +228,19 @@ class OpenRailsParser:
                     self.log(f"  > Changed season to: {season}")
 
             events_match = re.search(r'(\bEvents\s*\(\s*)(.*?)(\s*\)\s*\))', new_content, re.IGNORECASE | re.DOTALL)
-            if not events_match: return None, "Could not find 'Events ()' block."
-            clean_events_content = re.sub(r'\s*EventCategoryTime\s*\(\s*Name\s*\(\s*WTHLINK_.*?\)\s*.*?\)', '', events_match.group(2), flags=re.DOTALL | re.IGNORECASE).strip()
-            final_content = f"{new_content[:events_match.start(2)]}\n{act_events_content}\n{clean_events_content}\n\t{new_content[events_match.end(2):]}"
+            if not events_match:
+                self.log("  > WARNING: 'Events ()' block not found. Appending a new one to the end of the file.")
+                last_paren_match = re.search(r'(\s*\)\s*)$', new_content, re.DOTALL)
+                if last_paren_match:
+                    insertion_point = last_paren_match.start(1)
+                    new_events_block = f"\n\tEvents (\n{act_events_content}\n\t)"
+                    final_content = new_content[:insertion_point] + new_events_block + new_content[insertion_point:]
+                else:
+                    return None, "Could not find the end of the Activity file to add Events block."
+            else:
+                clean_events_content = re.sub(r'\s*EventCategoryTime\s*\(\s*Name\s*\(\s*WTHLINK_.*?\)\s*.*?\)', '', events_match.group(2), flags=re.DOTALL | re.IGNORECASE).strip()
+                final_content = f"{new_content[:events_match.start(2)]}\n{act_events_content}\n{clean_events_content}\n\t{new_content[events_match.end(2):]}"
+
             with open(new_path, 'w', encoding=original_encoding) as f: f.write(final_content)
             return new_path, "New activity file created successfully!"
         except Exception as e: return None, f"Error saving files: {e}"
@@ -289,4 +299,11 @@ class OpenRailsParser:
                 overcast = get_val('ORTSOvercast') * 100
                 fog = get_val('ORTSFog')
                 precip = get_val('ORTSPrecipitationIntensity') * 1000
-       
+                liquidity = get_val('ORTSPrecipitationLiquidity')
+                
+                trans_m = re.search(r'ORTSOvercast\s*\(\s*[\d\.-]+\s+(\d+)', weather_content, re.IGNORECASE)
+                transition = int(trans_m.group(1)) if trans_m else 30
+
+                events.append({'type': 'weather', 'time': time, 'overcast': overcast, 'fog': fog, 'precip': precip, 'liquidity': liquidity, 'transition': transition})
+        
+        return sorted(events, key=lambda x: x['time'])
