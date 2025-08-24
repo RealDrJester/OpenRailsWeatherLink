@@ -267,8 +267,13 @@ class MainApplication(tk.Tk):
 
     def show_debug_info(self):
         try:
+            route_selection = self.route_listbox.curselection()
+            selected_route_text = "None"
+            if route_selection:
+                selected_route_text = self.route_listbox.get(route_selection[0])
+            
             info = (
-                f"Selected Route: {self.route_listbox.get(self.route_listbox.curselection())}\n"
+                f"Selected Route: {selected_route_text}\n"
                 f"Selected Activity: {Path(self.selected_activity_path).name if self.selected_activity_path else 'None'}\n"
                 f"--------------------------------\n"
                 f"Path Distance (m): {self.path_dist}\n"
