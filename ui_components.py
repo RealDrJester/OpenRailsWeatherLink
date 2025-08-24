@@ -101,7 +101,7 @@ class AboutWindow(tk.Toplevel):
         main_frame.pack(expand=True, fill="both")
 
         ttk.Label(main_frame, text="ORTS WeatherLink", font=("", 14, "bold")).pack(pady=(0, 5), anchor="w")
-        ttk.Label(main_frame, text="Version 1.1").pack(anchor="w")
+        ttk.Label(main_frame, text="Version 1.2").pack(anchor="w")
         ttk.Label(main_frame, text="Author: DrJester, Grok, Claude, Copilot & Gemini AI.").pack(anchor="w", pady=(0,10))
         
         def create_link(parent, text, url):
