@@ -12,6 +12,7 @@
 config.json
 route_cache.json
 user_presets.json
+##GUARDRAILS_AI_DO_NOT_TOUUCH_PROMPT.txt
 
 # --- Python Specific ---
 # Ignore Python's bytecode and cache directories.
