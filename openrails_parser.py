@@ -108,10 +108,12 @@ class OpenRailsParser:
         for act_path in sorted(activities_path.glob("*.act")):
             content, _ = self._read_file(act_path)
             if not content: continue
-            name_match = re.search(r'\sName\s*\(\s*"(.*?)"\s*\)', content, re.IGNORECASE | re.DOTALL)
+            # Regex to find Name(), supporting both "quoted" and unquoted values
+            name_match = re.search(r'\bName\s*\(\s*(?:"([^"]+)"|([^\s\)]+))\s*\)', content, re.IGNORECASE | re.DOTALL)
             if name_match:
+                activity_name = name_match.group(1) or name_match.group(2)
                 has_weather_version = f".{APP_SUFFIX}." in act_path.name
-                activities[act_path.name] = {"display_name": name_match.group(1), "path": str(act_path), "has_weather": has_weather_version}
+                activities[act_path.name] = {"display_name": activity_name.strip(), "path": str(act_path), "has_weather": has_weather_version}
         return activities
     def get_activity_details(self, act_path_str):
         details = {"description": "N/A", "briefing": "N/A", "path_id": None, "existing_weather": [], "season": 1, "start_time": 0}
@@ -195,14 +197,14 @@ class OpenRailsParser:
         try:
             if manual_suffix:
                 filename_suffix = f"{APP_SUFFIX}.{manual_suffix}"
-                name_suffix = f"[{APP_SUFFIX}.{manual_suffix}]"
             elif metar_station:
                 filename_suffix = f"{APP_SUFFIX}.METAR.{metar_station}"
-                name_suffix = f"[{APP_SUFFIX}.METAR.{metar_station}]"
             else:
                 date_str = date_obj.strftime("%Y%m%d") if date_obj else datetime.now().strftime("%Y%m%d")
                 filename_suffix = f"{APP_SUFFIX}.CHAOTIC" if chaotic else f"{APP_SUFFIX}.{date_str}"
-                name_suffix = f"[{APP_SUFFIX}.CHAOTIC]" if chaotic else f"[{APP_SUFFIX}.{date_str}]"
+            
+            # The suffix to append to the activity name is a dot followed by the filename suffix.
+            name_suffix = f".{filename_suffix}"
             
             base_stem = re.split(fr'\.{APP_SUFFIX}\.', original_path.stem)[0]
             new_path = original_path.parent / f"{base_stem}.{filename_suffix}.act"
@@ -211,15 +213,32 @@ class OpenRailsParser:
             self.log(f"  > Created safe copy: {new_path.name}")
             new_content, original_encoding = self._read_file(new_path)
             if not new_content: return None, "Failed to read the newly created copy."
-            name_pattern = re.compile(r'(Name\s*\(\s*")([^"]*)(")', re.IGNORECASE)
-            name_match = name_pattern.search(new_content)
+            
+            # More robust pattern to find Name(), supporting both "quoted" and unquoted values
+            name_search_pattern = re.compile(r'(\bName\s*\(\s*(?:"([^"]+)"|([^\s\)]+))\s*\))', re.IGNORECASE)
+            name_match = name_search_pattern.search(new_content)
+
             if name_match:
-                original_name = name_match.group(2).split(' [')[0]
-                new_activity_name = f"{original_name} {name_suffix}"
-                replacement_string = f'{name_match.group(1)}{new_activity_name}{name_match.group(3)}'
-                new_content = name_pattern.sub(replacement_string, new_content, count=1)
+                original_block = name_match.group(1)
+                quoted_name = name_match.group(2)
+                unquoted_name = name_match.group(3)
+
+                # Strip any pre-existing WTHLINK suffix to prevent duplication
+                original_name_str = (quoted_name or unquoted_name).split(f'.{APP_SUFFIX}.')[0].strip()
+                new_activity_name = f"{original_name_str}{name_suffix}"
+                
+                # Reconstruct the block, preserving quotes if they were used
+                if quoted_name is not None:
+                    indent = re.match(r'(\s*)', original_block).group(1)
+                    new_block = f'{indent}Name ( "{new_activity_name}" )'
+                else:
+                    indent = re.match(r'(\s*)', original_block).group(1)
+                    new_block = f'{indent}Name ( {new_activity_name} )'
+                
+                new_content = new_content.replace(original_block, new_block, 1)
                 self.log(f"  > Renamed activity to: \"{new_activity_name}\"")
-            else: self.log("  > WARNING: Could not find activity Name() to rename.")
+            else:
+                self.log("  > WARNING: Could not find activity Name() to rename.")
 
             if season is not None:
                 season_pattern = re.compile(r'(\bSeason\s*\(\s*)(\d)(\s*\))', re.IGNORECASE)

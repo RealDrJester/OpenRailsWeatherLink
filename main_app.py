@@ -753,20 +753,26 @@ class MainApplication(tk.Tk):
             if chaotic:
                 weather_events, msg = self.weather.create_chaotic_weather_events(self.sound_manager, route_info['path'])
             else:
-                if historical and not self.historical_selection:
-                    self.log("[ERROR] Historical generation called but no date selected.")
-                    if not self.shutdown_event.is_set(): self.after(0, self.stop_loading)
-                    return
-                date_obj = self.historical_selection['date'] if historical else datetime.now().date()
-                start_hour = self.historical_selection['hour'] if historical else 0
+                if historical:
+                    if not self.historical_selection:
+                        self.log("[ERROR] Historical generation called but no date selected.")
+                        if not self.shutdown_event.is_set(): self.after(0, self.stop_loading)
+                        return
+                    date_obj = self.historical_selection['date']
+                    start_hour = self.historical_selection['hour']
+                else: # Live Weather
+                    date_obj = datetime.now().date()
+                    start_hour = datetime.now().hour
+                
                 season = self.weather.get_season(date_obj, self.found_coords[0])
                 add_thunder = self.add_thunder_var.get(); add_wind = self.add_wind_var.get(); add_rain = self.add_rain_var.get()
+                transition_secs = self.config.get('weather_transition_secs')
                 
                 path_coords_for_api = self.path_coords_cache
                 if not path_coords_for_api:
                     path_coords_for_api = [(self.found_coords, 0)] if self.found_coords else []
 
-                weather_events, msg = self.weather.create_weather_events_string(path_coords_for_api, self.path_dist, season, date_obj, start_hour, add_thunder, add_wind, add_rain, self.sound_manager, route_info['path'])
+                weather_events, msg = self.weather.create_weather_events_string(path_coords_for_api, self.path_dist, season, date_obj, start_hour, add_thunder, add_wind, add_rain, self.sound_manager, route_info['path'], transition_secs)
                 
             if self.shutdown_event.is_set(): return
             if not weather_events: self.log(f"[ERROR] Weather event string creation failed: {msg}"); self.after(0, self.stop_loading); return

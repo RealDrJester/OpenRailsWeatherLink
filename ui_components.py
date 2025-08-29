@@ -101,7 +101,7 @@ class AboutWindow(tk.Toplevel):
         main_frame.pack(expand=True, fill="both")
 
         ttk.Label(main_frame, text="ORTS WeatherLink", font=("", 14, "bold")).pack(pady=(0, 5), anchor="w")
-        ttk.Label(main_frame, text="Version 1.2").pack(anchor="w")
+        ttk.Label(main_frame, text="Version 1.3").pack(anchor="w")
         ttk.Label(main_frame, text="Author: DrJester, Grok, Claude, Copilot & Gemini AI.").pack(anchor="w", pady=(0,10))
         
         def create_link(parent, text, url):
@@ -185,6 +185,15 @@ class SettingsWindow(tk.Toplevel):
         self.pin_distance_var = tk.IntVar(value=self.config.get('pin_distance_km'))
         pin_spinbox = ttk.Spinbox(map_settings_frame, from_=5, to=100, increment=5, textvariable=self.pin_distance_var, command=self.save_pin_distance, width=8)
         pin_spinbox.grid(row=0, column=1, sticky="w")
+        
+        weather_settings_frame = ttk.LabelFrame(general_frame, text="Weather Generation", padding=10)
+        weather_settings_frame.pack(fill="x", pady=(10,0))
+        ttk.Label(weather_settings_frame, text="Transition Time (seconds):").grid(row=0, column=0, sticky="w", padx=5)
+        self.transition_var = tk.IntVar(value=self.config.get('weather_transition_secs'))
+        transition_spinbox = ttk.Spinbox(weather_settings_frame, from_=60, to=7200, increment=60, textvariable=self.transition_var, command=self.save_transition_time, width=8)
+        transition_spinbox.grid(row=0, column=1, sticky="w")
+        Tooltip(transition_spinbox, "How long each weather change should take. Recommended: 1800 (for 30-minute intervals).")
+
 
         sound_frame = ttk.LabelFrame(general_frame, text="Sound System", padding=10)
         sound_frame.pack(fill="x", pady=(10,0))
@@ -225,6 +234,7 @@ class SettingsWindow(tk.Toplevel):
             self.theme_var.set(self.config.get('theme'))
             self.pin_distance_var.set(self.config.get('pin_distance_km'))
             self.cache_var.set(self.config.get('use_route_cache'))
+            self.transition_var.set(self.config.get('weather_transition_secs'))
             self.apply_theme()
             self.parent.geometry(self.config.get('window_geometry'))
             messagebox.showinfo("Success", "Settings have been reset to default.", parent=self)
@@ -233,6 +243,13 @@ class SettingsWindow(tk.Toplevel):
         try:
             distance = self.pin_distance_var.get()
             self.config.set('pin_distance_km', distance)
+        except (tk.TclError, ValueError):
+            pass # Ignore errors from spinbox during input
+
+    def save_transition_time(self):
+        try:
+            transition_time = self.transition_var.get()
+            self.config.set('weather_transition_secs', transition_time)
         except (tk.TclError, ValueError):
             pass # Ignore errors from spinbox during input
 

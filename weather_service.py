@@ -123,7 +123,7 @@ class WeatherService:
             if month in [3, 4, 5]: return 2 # Autumn
             return 3 # Winter
             
-    def create_weather_events_string(self, path_coords, path_dist, season, date_obj, start_hour, add_thunder_sounds, add_wind_sounds, add_rain_sounds, sound_manager, route_path):
+    def create_weather_events_string(self, path_coords, path_dist, season, date_obj, start_hour, add_thunder_sounds, add_wind_sounds, add_rain_sounds, sound_manager, route_path, transition_secs):
         weather_points = [p[0] for p in path_coords] if path_coords else []
         weather_data_list = self.get_weather_data(weather_points, date_obj)
         if not weather_data_list: return None, "Could not fetch weather data from API."
@@ -151,6 +151,7 @@ class WeatherService:
         events = []; sound_events = []; sound_channels = {}; sound_playlists = {}; global_sound_counter = 0
         num_locations = len(weather_data_list)
         total_intervals = 48
+        start_time_of_day_secs = start_hour * 3600
 
         try:
             for i in range(total_intervals):
@@ -168,9 +169,14 @@ class WeatherService:
 
                 wmo = int(get_val("weathercode")); temp = get_val("temperature_2m"); wind_speed = get_val("windspeed_10m"); precip_mm = get_val("precipitation")
                 p = map_weather(wmo, get_val("cloudcover"), precip_mm, get_val("visibility"), temp)
-                event_time_seconds = i * 1800; transition_time = 60 if i == 0 else 1800
                 
-                event_lines = [ f"\t\tEventCategoryTime ( ID ( 900{i} ) Name ( WTHLINK_Interval_{i} ) Time ( {event_time_seconds} ) Outcomes ( ORTSWeatherChange ( ORTSOvercast ( {p['Overcast']:.2f} {transition_time} ) ORTSFog ( {p['Fog']:.0f} {transition_time} ) ORTSPrecipitationIntensity ( {p['Precipitation']:.5f} {transition_time} ) ORTSPrecipitationLiquidity ( {p['Liquidity']:.1f} {transition_time} ) ) ) )" ]
+                event_time_offset = i * 1800 # 30 minute intervals
+                event_time_seconds = start_time_of_day_secs + event_time_offset
+                
+                # Make the first event's transition time short, subsequent ones use the user setting.
+                current_transition_time = 60 if i == 0 else transition_secs
+                
+                event_lines = [ f"\t\tEventCategoryTime ( ID ( 900{i} ) Name ( WTHLINK_Interval_{i} ) Time ( {event_time_seconds} ) Outcomes ( ORTSWeatherChange ( ORTSOvercast ( {p['Overcast']:.2f} {current_transition_time} ) ORTSFog ( {p['Fog']:.0f} {current_transition_time} ) ORTSPrecipitationIntensity ( {p['Precipitation']:.5f} {current_transition_time} ) ORTSPrecipitationLiquidity ( {p['Liquidity']:.1f} {current_transition_time} ) ) ) )" ]
                 events.extend(event_lines)
 
                 conditions = set()
@@ -187,7 +193,7 @@ class WeatherService:
                 for sound_def in sound_manager.sound_definitions:
                     category = sound_def['category']
                     if sound_def['condition'] in conditions:
-                        sound_channels.setdefault(category, 0)
+                        sound_channels.setdefault(category, start_time_of_day_secs)
                         if event_time_seconds >= sound_channels[category]:
                             if not sound_playlists.get(category):
                                 all_sounds = sound_manager.sounds.get(category, [])

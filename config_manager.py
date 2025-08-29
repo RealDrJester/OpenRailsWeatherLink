@@ -5,7 +5,7 @@ from pathlib import Path
 class ConfigManager:
     def __init__(self, config_file='config.json'):
         self.config_path = Path(config_file)
-        self.defaults = { 'theme': 'light', 'content_paths': [], 'last_content_path': None, 'window_geometry': '1300x850', 'pin_distance_km': 10, 'show_startup_info': True, 'use_route_cache': True }
+        self.defaults = { 'theme': 'light', 'content_paths': [], 'last_content_path': None, 'window_geometry': '1300x850', 'pin_distance_km': 10, 'show_startup_info': True, 'use_route_cache': True, 'weather_transition_secs': 1800 }
         self.config = self.load_config()
     def load_config(self):
         if self.config_path.exists():
